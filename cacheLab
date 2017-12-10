@@ -1,0 +1,134 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include<getopt.h>
+//#include "cachelab.h"
+
+
+/*关系：一个大的整体是主存+cache共同构成的，这个整体有族群即主存的组的大小、cache的组的大小，内存块的地址，cache的组里边的结构。
+Set是一个cache组里边的结构，它是由行组成的，每一行里边包含有效位+标志位+辅助Number
+*/
+/*cache的行*/
+typedef struct{
+    int valid;//有效位
+    int tag;//标志位,说明是哪一个块群的
+    int number;//LRU算法需要计数位
+
+}Line;
+
+typedef struct{
+    Line* lines;//一个组里边的行
+}Set;
+
+/*主存-cache的信息*/
+typedef struct{
+    int s_number;//组索引位数
+    int E_number;//关联度（每组的缓存行数）
+    Set *sets;//模拟cache（cache里边有好多个组）
+}state_;
+
+
+void printfHelpMenu();
+void printSummary(int hit_count,int miss_count,int eviction_count);
+
+int main(int argc,char **argv)
+{
+    int flag,s,E,b;
+    state_ cache;
+    //定义出三个变量
+    int hit_count=0,miss_count=0,eviction_count=0;
+    //从文件里边读进信息
+    char* trace_file;
+    const char* optstring="hvs:E:b:t";
+    char opt;
+    while((opt=getopt(argc,argv,optstring))!=-1){
+        switch(opt){
+            case 'h':
+                printfHelpMenu(argv);//打印出帮助信息
+                break;
+            case 'v':
+                //??
+                flag=1;
+                break;
+            case 's':
+                s=atoi(optarg);
+                break;
+            case 'E':
+                E=atoi(optarg);
+                break;
+            case 'b':
+                b=atoi(optarg);
+                break;
+            case 't':
+                //打开的文件
+                trace_file=optarg;
+                break;
+            default:
+                printfHelpMenu(argv);
+                break;
+
+        }
+    }
+
+    //初始化cache,传地址可以全局修改
+    Initial(s,E,b,&cache);
+
+    //读取文件，判断行为M、L、S、I
+
+    FILE *tracefile = fopen(trace_file,"r");
+    while(fscanf())
+
+    //输出结果
+    printSummary(hit_count,miss_count,eviction_count);
+    return 0;
+}
+
+/*打印出帮助信息*/
+void printfHelpMenu(){
+
+
+}
+
+/*输出结果*/
+void printSummary(int hit_count,int miss_count,int eviction_count){
+
+
+}
+
+/*初始化cache*/
+void Initial(int s,int E,int b,state_ *cache){
+    int i,j;
+    //先申请一个大的图
+    cache =(state_)malloc(sizeof(state_));
+     if(!cache){
+        printf("no enough Memory!\n");
+        exit(0);
+    }
+    //s是cache的有多少组刻画的位数
+    cache->s_number=2<<s;//即cache分组的个数
+    cache->E_number=E;//每组的行数
+
+    //开辟s_number个组
+    cache->Sets=(Set*)malloc((cache->set_number)*sizeof(Set));
+    if(!cache->Sets){
+        printf("no enough Memory!\n");
+        exit(0);
+
+    }
+    for(i=0;i<cache->set_number;i++){
+        //为每一组申请行
+        cache->Sets[i]->lines=(Line*)malloc(E *sizeof(Line));
+        //进入该组的第j行，初始化
+        for(j=0;j<E;j++){
+            cache->Sets[i]->lines[j]->valid=0;//有效位
+            cache->Sets[i]->lines[j]->number=0;//计数位
+        }
+    }
+}
+
+
+
+
+
+
+
+
