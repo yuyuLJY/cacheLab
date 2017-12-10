@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include<getopt.h>
 //#include "cachelab.h"
-
 
 /*关系：一个大的整体是主存+cache共同构成的，这个整体有族群即主存的组的大小、cache的组的大小，内存块的地址，cache的组里边的结构。
 Set是一个cache组里边的结构，它是由行组成的，每一行里边包含有效位+标志位+辅助Number
@@ -11,7 +11,7 @@ Set是一个cache组里边的结构，它是由行组成的，每一行里边包
 typedef struct{
     int valid;//有效位
     int tag;//标志位,说明是哪一个块群的
-    int number;//LRU算法需要计数位
+    int number;//LRU算法需要计数位,因为有s行
 
 }Line;
 
@@ -24,24 +24,37 @@ typedef struct{
     int s_number;//组索引位数
     int E_number;//关联度（每组的缓存行数）
     Set *sets;//模拟cache（cache里边有好多个组）
-}state_;
-
-
+}*state_;
+int hit_count=0,miss_count=0,eviction_count=0;
+int setBits,tagBits;
+void Initial(int s,int E,int b,state_ cache);
 void printfHelpMenu();
 void printSummary(int hit_count,int miss_count,int eviction_count);
-
+int getSet(int addr,int s,int b);
+int getTag(int addr,int s,int b);
+void loadData(state_  cache,int setBits,int tagBits,int addr);
+void storeData(state_ cache,int setBits,int tagBits,int addr);
+void modifyoryData(state_ cache,int setBits,int tagBits,int addr);
+int isMiss(state_ cache,int setBits,int tagBits);
+int isfull_updata(state_ cache,int setBits,int tagBits);
+int findfree(state_ cache,int setBits);
+void updataNmuber1(state_ cache,int setBits,int i);
+void updataNmuber2(state_ cache,int setBits,int i);
+void updataNmuber3(state_ cache,int setBits);
 int main(int argc,char **argv)
 {
     int flag,s,E,b;
+    int addr,size;
     state_ cache;
+    cache =(state_)malloc(sizeof(state_));
     //定义出三个变量
-    int hit_count=0,miss_count=0,eviction_count=0;
     //从文件里边读进信息
     char* trace_file;
     const char* optstring="hvs:E:b:t";
-    char opt;
-    while((opt=getopt(argc,argv,optstring))!=-1){
-        switch(opt){
+    string opt;
+    int c;
+    while((c=getopt(argc,argv,optstring))!=-1){
+        switch(c){
             case 'h':
                 printfHelpMenu(argv);//打印出帮助信息
                 break;
@@ -70,12 +83,28 @@ int main(int argc,char **argv)
     }
 
     //初始化cache,传地址可以全局修改
-    Initial(s,E,b,&cache);
+    Initial(s,E,b,cache);
 
     //读取文件，判断行为M、L、S、I
-
     FILE *tracefile = fopen(trace_file,"r");
-    while(fscanf())
+    //读出操作行为+地址+size
+    while(fscanf(tracefile,"%s %x %d",&opt,&addr,&size)!=EOF){
+        if(flag==1) printf("%s %x %d",opt,addr,size);
+        //比较地址需要比较槽号+主存标号
+        int setBits=getSet(addr,s,b);
+        int tagBits=getTag(addr,s,b);
+        if(strcmp(opt,"I")==0) continue;
+        if(strcmp(opt,"S")){
+            //数据存储
+            storeData(cache,setBits,tagBits,addr);
+        }
+        if(strcmp(opt,"M")){
+            modifyoryData(cache,setBits,tagBits,addr);
+        }
+        if(strcmp(opt,"L")){
+            loadData(cache,setBits,tagBits,addr);
+        }
+    }
 
     //输出结果
     printSummary(hit_count,miss_count,eviction_count);
@@ -93,12 +122,11 @@ void printSummary(int hit_count,int miss_count,int eviction_count){
 
 
 }
-
 /*初始化cache*/
-void Initial(int s,int E,int b,state_ *cache){
+void Initial(int s,int E,int b,state_ cache){
     int i,j;
     //先申请一个大的图
-    cache =(state_)malloc(sizeof(state_));
+    //cache =(state_)malloc(sizeof(state_));
      if(!cache){
         printf("no enough Memory!\n");
         exit(0);
@@ -108,27 +136,147 @@ void Initial(int s,int E,int b,state_ *cache){
     cache->E_number=E;//每组的行数
 
     //开辟s_number个组
-    cache->Sets=(Set*)malloc((cache->set_number)*sizeof(Set));
-    if(!cache->Sets){
+    cache->sets=(Set*)malloc((cache->s_number)*sizeof(Set));
+    if(!cache->sets){
         printf("no enough Memory!\n");
         exit(0);
 
     }
-    for(i=0;i<cache->set_number;i++){
+    for(i=0;i<cache->s_number;i++){
         //为每一组申请行
-        cache->Sets[i]->lines=(Line*)malloc(E *sizeof(Line));
+        cache->sets[i].lines=(Line*)malloc(E *sizeof(Line));
         //进入该组的第j行，初始化
-        for(j=0;j<E;j++){
-            cache->Sets[i]->lines[j]->valid=0;//有效位
-            cache->Sets[i]->lines[j]->number=0;//计数位
+        for(j=0;j<cache->E_number;j++){
+            cache->sets[i].lines[j].valid=0;//有效位
+            cache->sets[i].lines[j].number=0;//计数位
         }
     }
 }
 
+//addr=Tag+cache一共多少组+内存地址
+/*从地址中找出组号*/
+int getSet(int addr,int s,int b){
+    //目的：摘取出中间的那一串s信息，用&111的方式来取出信息
+   return (addr>>b)&((1<<s)-1);
+}
 
+/*从地址中找出块群号*/
+int getTag(int addr,int s,int b){
+    return addr<<(s+b);
+}
 
+/*数据存储*/
+void storeData(state_ cache,int setBits,int tagBits,int addr){
+    loadData(cache,setBits,tagBits,addr);
+}
 
+/*数据装载*/
+void loadData(state_ cache,int setBits,int tagBits,int addr){
+    //判断是否命中
+    if((isMiss(cache,setBits,tagBits))==1){
+        miss_count++;//没有命中，积累
+        //如果满
+        if(isfull_updata(cache,setBits,tagBits)==1){
+            eviction_count++;//如果满了需要替换
+            isfull_updata(cache,setBits,tagBits);
+        }
+    }else{//命中
+        hit_count++;
+    }
+}
 
+/*数据修改*/
+void modifyoryData(state_ cache,int setBits,int tagBits,int addr){
+    //一次装入+存储
+    loadData(cache,setBits,tagBits,addr);
+    storeData(cache,setBits,tagBits,addr);
+}
+/*判断是否命中*/
+int isMiss(state_ cache,int setBits,int tagBits){
+   int i;
+   int flag_miss=1;
+   for(i=0;i<cache->E_number;i++){
+        //要求：valid为1+tag要比对对,i代表的是第setBits组的第i行命中
+        if(cache->sets[setBits].lines[i].valid==1 &&cache->sets[setBits].lines[i].tag==tagBits){
+            flag_miss=0;//命中了
+            updataNmuber1(cache,setBits,i);//标记的number要气作用了
+        }
+   }
+   return flag_miss;
+}
 
+/*判断该组cache满不满*/
+int isfull_updata(state_ cache,int setBits,int tagBits){
+    int i;
+    int isfull=1;
+    //如果满了，所有的valid都是1
+    for(i=0;i<cache->E_number;i++){
+        if(cache->sets[setBits].lines[i].valid==0){
+            isfull=0;
+            break ;
+        }
+    }
+    if(isfull==0){
+        //上边的工作已经刻画了空闲的i的位置
+        cache->sets[setBits].lines[i].valid=1;
+        cache->sets[setBits].lines[i].tag=tagBits;
+        updataNmuber2(cache,setBits,i);//更新频率数字
+    }else{
+        //如果已经满了，需要找到一个牺牲行
+        int find=findfree(cache,setBits);
+        cache->sets[setBits].lines[find].valid=1;
+        cache->sets[setBits].lines[find].tag=tagBits;
+        updataNmuber3(cache,setBits);
+    }
+    return isfull;
+}
 
+/*找到替换的行,找数字最大的*/
+int findfree(state_ cache,int setBits){
+    int j,max=0,x;
+    //在固定的行里边去寻找，最大的Number
+    for(j=0;j<cache->E_number;j++){
+        if(cache->sets[setBits].lines[j].number>max){
+            max=cache->sets[setBits].lines[j].number;//最大值被更新
+            x=j;//记录下最大值的标号
+        }
+    }
+    return x;
+}
 
+/*命中情况下的数据更新*/
+void updataNmuber1(state_ cache,int setBits,int i){
+    //选出比number[i]小的数字
+    int j;
+    for(j=0;j<cache->E_number;j++){
+        if(cache->sets[setBits].lines[j].number<cache->sets[setBits].lines[i].number)
+            cache->sets[setBits].lines[j].number++;//比命中块小的计数器加1
+    }
+    cache->sets[setBits].lines[i].number=0;//命中块的计数器置为0
+}
+
+//不命中，但是不满，直接插
+void updataNmuber2(state_ cache,int setBits,int i){
+    int j;
+    for(j=0;j<cache->E_number;j++){
+        cache->sets[setBits].lines[j].number++;//所有都+1，除了新的行
+    }
+    cache->sets[setBits].lines[i].number=0;//命中块的计数器置为0
+}
+
+/*不命中，但是满，直接插
+数字特点：最大值的被置为0，其余加1*/
+void updataNmuber3(state_ cache,int setBits){
+    int i,j,y;
+    int max=0;
+    for(i=0;i<cache->E_number;i++){
+        cache->sets[setBits].lines[i].number++;//所有都+1，除了新的行
+    }
+    for(j=0;j<cache->E_number;j++){
+        if(cache->sets[setBits].lines[j].number>max){
+            max=cache->sets[setBits].lines[j].number;//最大值被更新
+            y=j;//记录下最大值的标号
+        }
+    }
+    cache->sets[setBits].lines[y].number=0;//最大值的计数器置为0
+}
