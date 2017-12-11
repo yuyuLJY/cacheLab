@@ -88,7 +88,7 @@ int main(int argc,char **argv)
     //读取文件，判断行为M、L、S、I
     FILE *tracefile = fopen(trace_file,"r");
     //读出操作行为+地址+size
-    while(fscanf(tracefile,"%s %x %d",&opt,&addr,&size)!=EOF){
+    while(fscanf(tracefile,"%s %x %d",&opt[12],&addr,&size)!=EOF){
         if(flag==1) printf("%s %x %d",opt,addr,size);
         //比较地址需要比较槽号+主存标号
         int setBits=getSet(addr,s,b);
