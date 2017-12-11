@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include<getopt.h>
-//#include "cachelab.h"
+#include<unistd.h>//getopt（分析命令行参数）头文件
+//#include<getopt.h>
+#include "cachelab.h"
 
 /*关系：一个大的整体是主存+cache共同构成的，这个整体有族群即主存的组的大小、cache的组的大小，内存块的地址，cache的组里边的结构。
 Set是一个cache组里边的结构，它是由行组成的，每一行里边包含有效位+标志位+辅助Number
@@ -50,20 +51,20 @@ int main(int argc,char **argv)
     //定义出三个变量
     //从文件里边读进信息
     char* trace_file;
-    const char* optstring="hvs:E:b:t";
-    string opt;
+    char opt[12];
     int c;
-    while((c=getopt(argc,argv,optstring))!=-1){
+    while((c=getopt(argc,argv,"hvs:E:b:t"))!=-1){
         switch(c){
             case 'h':
                 printfHelpMenu(argv);//打印出帮助信息
+                printf("hhh");
                 break;
             case 'v':
                 //??
                 flag=1;
                 break;
             case 's':
-                s=atoi(optarg);
+                s=atoi(optarg);//optarg选项的参数指针
                 break;
             case 'E':
                 E=atoi(optarg);
@@ -108,6 +109,7 @@ int main(int argc,char **argv)
 
     //输出结果
     printSummary(hit_count,miss_count,eviction_count);
+    free(cache);
     return 0;
 }
 
@@ -119,7 +121,7 @@ void printfHelpMenu(){
 
 /*输出结果*/
 void printSummary(int hit_count,int miss_count,int eviction_count){
-
+    printf("%d %d %d",hit_count,miss_count,eviction_count);
 
 }
 /*初始化cache*/
