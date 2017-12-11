@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include<unistd.h>//getopt（分析命令行参数）头文件
-//#include<getopt.h>
+#include<getopt.h>
 #include "cachelab.h"
 
 /*关系：一个大的整体是主存+cache共同构成的，这个整体有族群即主存的组的大小、cache的组的大小，内存块的地址，cache的组里边的结构。
@@ -50,14 +50,13 @@ int main(int argc,char **argv)
     cache =(state_)malloc(sizeof(state_));
     //定义出三个变量
     //从文件里边读进信息
-    char* trace_file;
-    char opt[12];
+    char *trace_file=NULL;
     int c;
-    while((c=getopt(argc,argv,"hvs:E:b:t"))!=-1){
+    //！！！！开始的后写成："hvs:E:b:t"
+    while((c=getopt(argc,argv,"hvs:E:b:t:"))!=-1){
         switch(c){
             case 'h':
-                printfHelpMenu(argv);//打印出帮助信息
-                printf("hhh");
+                //printfHelpMenu(argv);//打印出帮助信息
                 break;
             case 'v':
                 //??
@@ -65,44 +64,51 @@ int main(int argc,char **argv)
                 break;
             case 's':
                 s=atoi(optarg);//optarg选项的参数指针
+                //printf("s:%d\n",s);
                 break;
             case 'E':
                 E=atoi(optarg);
+                //printf("E:%d\n",E);
                 break;
             case 'b':
                 b=atoi(optarg);
+                //printf("b:%d\n",b);
                 break;
             case 't':
                 //打开的文件
                 trace_file=optarg;
+                //printf("flie:%s\n",trace_file);
                 break;
-            default:
-                printfHelpMenu(argv);
-                break;
+            /*default:
+                //printfHelpMenu(argv);
+                break;*/
 
         }
     }
-
-    //初始化cache,传地址可以全局修改
+//初始化cache,传地址可以全局修改
     Initial(s,E,b,cache);
-
     //读取文件，判断行为M、L、S、I
     FILE *tracefile = fopen(trace_file,"r");
+    char opt[15];
+    printf("初始计数%d %d %d\n",hit_count,miss_count,eviction_count);
     //读出操作行为+地址+size
-    while(fscanf(tracefile,"%s %x %d",&opt[12],&addr,&size)!=EOF){
-        if(flag==1) printf("%s %x %d",opt,addr,size);
+    while(fscanf(tracefile,"%s %x,%d\n",opt,&addr,&size)!=EOF){
+        if(strcmp(opt,"I")==0) continue;
+        if(flag==1) printf("%s %x %d\n",opt,addr,size);
         //比较地址需要比较槽号+主存标号
         int setBits=getSet(addr,s,b);
         int tagBits=getTag(addr,s,b);
-        if(strcmp(opt,"I")==0) continue;
-        if(strcmp(opt,"S")){
+        if(strcmp(opt,"S")==0){
+           //printf("S\n");
             //数据存储
             storeData(cache,setBits,tagBits,addr);
         }
-        if(strcmp(opt,"M")){
+        if(strcmp(opt,"M")==0){
+            //printf("M\n");
             modifyoryData(cache,setBits,tagBits,addr);
         }
-        if(strcmp(opt,"L")){
+        if(strcmp(opt,"L")==0){
+         //printf("L\n");
             loadData(cache,setBits,tagBits,addr);
         }
     }
@@ -112,16 +118,9 @@ int main(int argc,char **argv)
     free(cache);
     return 0;
 }
-
-/*打印出帮助信息*/
-void printfHelpMenu(){
-
-
-}
-
 /*输出结果*/
 void printSummary(int hit_count,int miss_count,int eviction_count){
-    printf("%d %d %d",hit_count,miss_count,eviction_count);
+    printf("计数%d %d %d\n",hit_count,miss_count,eviction_count);
 
 }
 /*初始化cache*/
@@ -145,7 +144,7 @@ void Initial(int s,int E,int b,state_ cache){
 
     }
     for(i=0;i<cache->s_number;i++){
-        //为每一组申请行
+        //为每一组申请E行
         cache->sets[i].lines=(Line*)malloc(E *sizeof(Line));
         //进入该组的第j行，初始化
         for(j=0;j<cache->E_number;j++){
@@ -164,12 +163,14 @@ int getSet(int addr,int s,int b){
 
 /*从地址中找出块群号*/
 int getTag(int addr,int s,int b){
-    return addr<<(s+b);
+    return addr>>(s+b);
 }
 
 /*数据存储*/
 void storeData(state_ cache,int setBits,int tagBits,int addr){
     loadData(cache,setBits,tagBits,addr);
+    printf("M计数:%d %d %d\n",hit_count,miss_count,eviction_count);
+    printf("\n");
 }
 
 /*数据装载*/
@@ -185,6 +186,8 @@ void loadData(state_ cache,int setBits,int tagBits,int addr){
     }else{//命中
         hit_count++;
     }
+    printf("L计数:%d %d %d\n",hit_count,miss_count,eviction_count);
+    printf("\n");
 }
 
 /*数据修改*/
@@ -192,6 +195,8 @@ void modifyoryData(state_ cache,int setBits,int tagBits,int addr){
     //一次装入+存储
     loadData(cache,setBits,tagBits,addr);
     storeData(cache,setBits,tagBits,addr);
+    printf("M计数:%d %d %d\n",hit_count,miss_count,eviction_count);
+    printf("\n");
 }
 /*判断是否命中*/
 int isMiss(state_ cache,int setBits,int tagBits){
